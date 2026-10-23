@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Data Structures in C</title>
+<style>
+:root{--bg:#fafaf7;--fg:#1d1d1b;--mu:#6b6b66;--card:#fff;--bd:#dcdcd4;--ac:#1f5fbf;--h:#f2b441;--g:#7cc48a;--code:#14181f;--cf:#e6edf3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15161a;--fg:#ececea;--mu:#9a9a94;--card:#1e2026;--bd:#33363d;--ac:#6ea8ff;--code:#0c0e12}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:16px 20px;border-bottom:1px solid var(--bd)}header h1{margin:0;font-size:20px}header p{margin:2px 0 0;color:var(--mu);font-size:13px}
+.w{display:flex;gap:20px;padding:16px 20px;max-width:1100px;margin:auto}
+nav{width:190px;flex:none;max-height:calc(100vh - 90px);overflow-y:auto;position:sticky;top:8px;align-self:flex-start}nav h3{margin:12px 0 2px 10px;font-size:12px;text-transform:uppercase}nav button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--fg);padding:6px 10px;border-radius:6px;cursor:pointer;font:inherit}
+nav button.on{background:var(--ac);color:#fff}nav button:hover:not(.on){background:var(--card)}
+main{flex:1;min-width:0}h2{margin:0 0 4px}.d{color:var(--mu);margin:0 0 12px}
+.viz{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;overflow-x:auto}
+.row{display:flex;gap:4px;flex-wrap:nowrap;padding:6px 0 22px}
+.c{position:relative;min-width:48px;height:48px;border:2px solid var(--bd);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.c.h{background:var(--h);color:#000}.c.g{background:var(--g);color:#000}
+.c i{position:absolute;bottom:-18px;font-size:11px;color:var(--mu);font-style:normal}.c u{position:absolute;top:-17px;font-size:11px;color:var(--ac);text-decoration:none;white-space:nowrap}
+.ctl{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.ctl input{width:90px;padding:6px;border:1px solid var(--bd);border-radius:6px;background:var(--card);color:var(--fg)}.ctl input.wd{width:210px}
+.ctl button{padding:6px 12px;border:1px solid var(--ac);background:none;color:var(--ac);border-radius:6px;cursor:pointer;font:inherit}.ctl button:hover{background:var(--ac);color:#fff}
+.m{min-height:22px;font-weight:600}.nd{display:inline-flex;align-items:center}.nd span{border:2px solid var(--bd);padding:8px 12px;border-radius:6px}.nd em{padding:0 6px;font-style:normal;color:var(--mu)}
+.t{font-family:ui-monospace,Menlo,monospace;margin-top:6px}
+pre{background:var(--code);color:var(--cf);padding:14px;border-radius:10px;overflow:auto;font-size:13px;line-height:1.45;margin-top:14px}
+h3{margin:16px 0 0;font-size:14px;color:var(--mu)}
+@media(max-width:700px){.w{flex-direction:column}nav{width:100%;display:flex;overflow-x:auto;gap:4px;max-height:none;position:static;align-items:center}nav h3{margin:0 4px}nav button{width:auto;white-space:nowrap}}
+</style></head><body>
+<header><h1>Data Structures in C</h1><p>C is the reference implementation. JavaScript only animates it. Each visualization follows the C code shown below it.</p></header>
+<div class="w"><nav id="nav"></nav><main><h2 id="ti"></h2><p class="d" id="de"></p><div class="viz" id="vz"></div><div class="ctl" id="ct"></div><div class="m" id="ms"></div><h3>C implementation (standard C, stdio.h / stdlib.h / string.h)</h3><pre id="cd"></pre></main></div>
+<script>
+const R=String.raw,rng=(s,e)=>Array.from({length:Math.max(0,e-s)},(_,i)=>s+i),pad=(a,n)=>rng(0,n).map(i=>a[i]??null);
+const cells=(a,h=[],g=[],l={})=>'<div class=row>'+a.map((v,i)=>`<div class="c ${h.includes(i)?'h':''} ${g.includes(i)?'g':''}"><b>${v??''}</b><i>${i}</i>${l[i]?`<u>${l[i]}</u>`:''}</div>`).join('')+'</div>';
+const nodes=(a,cyc)=>a.length?'<div class=nd>'+a.map(v=>`<span>${v}</span><em>→</em>`).join('')+(cyc?'<em>↺ back to head</em>':'<em>NULL</em>')+'</div>':'<em>head = NULL</em>';
+const lab=(o)=>{const l={};for(const k in o){const i=o[k];if(i>=0)l[i]=(l[i]?l[i]+'/':'')+k}return l};
+const num=s=>s.split(/[,\s]+/).filter(x=>x!=='').map(Number);
+// ---------- graph ----------
+const P=[[40,30],[140,30],[40,100],[140,100],[40,170],[140,170]],E=[[0,1],[0,2],[1,3],[2,3],[2,4],[3,5],[4,5]],adj=n=>E.filter(e=>e.includes(n)).map(e=>e[0]==n?e[1]:e[0]).sort();
+const gs=(vis,cur)=>`<svg viewBox="0 0 180 200" width="180" height="200">${E.map(([a,b])=>`<line x1="${P[a][0]}" y1="${P[a][1]}" x2="${P[b][0]}" y2="${P[b][1]}" stroke="var(--bd)" stroke-width="2"/>`).join('')}${P.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="16" fill="${i==cur?'var(--h)':vis.includes(i)?'var(--g)':'var(--card)'}" stroke="var(--mu)" stroke-width="2"/><text x="${p[0]}" y="${p[1]+5}" text-anchor="middle" fill="#000" font-size="14">${i}</text>`).join('')}</svg>`;
+// ---------- BST drawing ----------
+const bins=(t,v)=>!t?{v}:(v<t.v?(t.l=bins(t.l,v)):(t.r=bins(t.r,v)),t);
+const trav=(t,k,o=[])=>{if(t){k==0&&o.push(t.v);trav(t.l,k,o);k==1&&o.push(t.v);trav(t.r,k,o);k==2&&o.push(t.v)}return o};
+const bd=(t,hl=[])=>{if(!t)return'<em>root = NULL</em>';let x=0,md=0,N=[],Ed=[];const w=(n,d)=>{if(!n)return;md=Math.max(md,d);const l=w(n.l,d+1),o={x:0,y:d*50+22,v:n.v};o.x=x++*44+24;const r=w(n.r,d+1);N.push(o);l&&Ed.push([o,l]);r&&Ed.push([o,r]);return o};w(t,0);
+return`<svg viewBox="0 0 ${x*44+10} ${md*50+46}" width="${x*44+10}" height="${md*50+46}">${Ed.map(([a,b])=>`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--mu)"/>`).join('')}${N.map(o=>`<circle cx="${o.x}" cy="${o.y}" r="17" fill="${hl.includes(o.v)?'var(--h)':'var(--card)'}" stroke="var(--mu)" stroke-width="2"/><text x="${o.x}" y="${o.y+5}" text-anchor="middle" fill="${hl.includes(o.v)?'#000':'var(--fg)'}" font-size="13">${o.v}</text>`).join('')}</svg>`};
+// ---------- frame generators ----------
+const bub=a=>{a=[...a];const f=[],n=a.length;for(let i=0;i<n-1;i++)for(let j=0;j<n-1-i;j++){f.push({h:cells(a,[j,j+1],rng(n-i,n)),m:`Compare a[${j}]=${a[j]} and a[${j+1}]=${a[j+1]}`});if(a[j]>a[j+1]){[a[j],a[j+1]]=[a[j+1],a[j]];f.push({h:cells(a,[j,j+1],rng(n-i,n)),m:'Swapped'})}}f.push({h:cells(a,[],rng(0,n)),m:'Sorted'});return f};
+const sel=a=>{a=[...a];const f=[],n=a.length;for(let i=0;i<n-1;i++){let m=i;for(let j=i+1;j<n;j++){f.push({h:cells(a,[m,j],rng(0,i)),m:`Is a[${j}]=${a[j]} < current min a[${m}]=${a[m]}?`});if(a[j]<a[m])m=j}[a[i],a[m]]=[a[m],a[i]];f.push({h:cells(a,[i,m],rng(0,i+1)),m:`Swap min into position ${i}`})}f.push({h:cells(a,[],rng(0,n)),m:'Sorted'});return f};
+const ins=a=>{a=[...a];const f=[];for(let i=1;i<a.length;i++){let k=a[i],j=i-1;f.push({h:cells(a,[i],rng(0,i)),m:`key = ${k}`});while(j>=0&&a[j]>k){a[j+1]=a[j];f.push({h:cells(a,[j+1],rng(0,i)),m:`Shift ${a[j]} right`});j--}a[j+1]=k;f.push({h:cells(a,[j+1],rng(0,i+1)),m:`Insert key at ${j+1}`})}f.push({h:cells(a,[],rng(0,a.length)),m:'Sorted'});return f};
+const qs=a=>{a=[...a];const f=[];const q=(lo,hi)=>{if(lo>=hi){return}let p=a[hi],i=lo-1;for(let j=lo;j<hi;j++){f.push({h:cells(a,[j,hi],[]),m:`Compare a[${j}]=${a[j]} with pivot ${p}`});if(a[j]<p){i++;[a[i],a[j]]=[a[j],a[i]];f.push({h:cells(a,[i,j],[]),m:'Swap into left part'})}}[a[i+1],a[hi]]=[a[hi],a[i+1]];f.push({h:cells(a,[i+1],[]),m:`Pivot ${p} placed at ${i+1}`});q(lo,i);q(i+2,hi)};q(0,a.length-1);f.push({h:cells(a,[],rng(0,a.length)),m:'Sorted'});return f};
+const ms=a=>{a=[...a];const f=[];const s=(l,r)=>{if(l>=r)return;const m=(l+r)>>1;s(l,m);s(m+1,r);const L=a.slice(l,m+1),Rr=a.slice(m+1,r+1);let i=0,j=0,k=l;while(i<L.length||j<Rr.length)a[k++]=j>=Rr.length||(i<L.length&&L[i]<=Rr[j])?L[i++]:Rr[j++];f.push({h:cells(a,[],rng(l,r+1)),m:`Merged a[${l}..${r}]`})};s(0,a.length-1);return f};
+const lin=s=>{const[A,t]=s.split(';'),a=num(A),T=+t,f=[];for(let i=0;i<a.length;i++){f.push({h:cells(a,[i]),m:`a[${i}]=${a[i]} ${a[i]==T?'== ':'!= '}${T}`});if(a[i]==T){f.push({h:cells(a,[],[i]),m:`Found at index ${i}`});return f}}f.push({h:cells(a),m:'Not found (-1)'});return f};
+const bin=s=>{const[A,t]=s.split(';'),a=num(A).sort((x,y)=>x-y),T=+t,f=[];let lo=0,hi=a.length-1;while(lo<=hi){const m=(lo+hi)>>1;f.push({h:cells(a,[m],[],{lo,hi,mid:m}),m:`mid=${m}: a[mid]=${a[m]} vs ${T}`});if(a[m]==T){f.push({h:cells(a,[],[m]),m:`Found at index ${m}`});return f}a[m]<T?lo=m+1:hi=m-1}f.push({h:cells(a),m:'Not found (-1)'});return f};
+const bfs=s=>{const st=+s,vis=[st],q=[st],f=[{h:gs(vis,st)+`<div class=t>Queue: [${q}]</div>`,m:`Enqueue start ${st}`}];while(q.length){const u=q.shift();f.push({h:gs(vis,u)+`<div class=t>Queue: [${q}]</div>`,m:`Dequeue ${u}, visit it`});for(const v of adj(u))if(!vis.includes(v)){vis.push(v);q.push(v);f.push({h:gs(vis,u)+`<div class=t>Queue: [${q}]</div>`,m:`Neighbour ${v} unvisited: mark and enqueue`})}}f.push({h:gs(vis,-1),m:'BFS order: '+vis.join(' → ')});return f};
+const dfs=s=>{const vis=[],f=[],cs=[];const d=u=>{vis.push(u);cs.push(u);f.push({h:gs(vis,u)+`<div class=t>Call stack: [${cs}]</div>`,m:`dfs(${u}): visit`});for(const v of adj(u))if(!vis.includes(v))d(v);cs.pop();f.push({h:gs(vis,u)+`<div class=t>Call stack: [${cs}]</div>`,m:`Return from dfs(${u})`})};d(+s);f.push({h:gs(vis,-1),m:'DFS order: '+vis.join(' → ')});return f};
+const pr=c=>'+-'.includes(c)?1:'*/'.includes(c)?2:c=='^'?3:0;
+const i2p=s=>{const st=[],o=[],f=[],show=(m)=>f.push({h:`<div class=t>Output: ${o.join(' ')||'—'}<br>Stack: [ ${st.join(' ')} ]</div>`,m});for(const c of s.replace(/\s/g,'')){if(/[A-Za-z0-9]/.test(c)){o.push(c);show(`'${c}' operand → output`)}else if(c=='('){st.push(c);show('push (')}else if(c==')'){while(st.length&&st[st.length-1]!='(')o.push(st.pop());st.pop();show('pop to output until (')}else{while(st.length&&pr(st[st.length-1])>=pr(c)&&c!='^')o.push(st.pop());st.push(c);show(`operator '${c}': pop higher/equal precedence, push`)}}while(st.length)o.push(st.pop());show('Pop remaining → Postfix: '+o.join(' '));return f};
+const pfe=s=>{const st=[],f=[],show=m=>f.push({h:cells(pad(st,6),[],[],{top:st.length-1}),m});for(const t of s.trim().split(/\s+/)){if(!isNaN(t)){st.push(+t);show(`push ${t}`)}else{const b=st.pop(),a=st.pop();st.push(t=='+'?a+b:t=='-'?a-b:t=='*'?a*b:Math.trunc(a/b));show(`${a} ${t} ${b} = ${st[st.length-1]}`)}}f.push({h:cells(pad(st,6),[],[0]),m:'Result = '+st[0]});return f};
+// ---------- topics ----------
+const T=[
+{n:'Arrays',d:'Array operations: traversal, insertion, deletion (shift elements, O(n)) and search. Contiguous memory.',S:()=>({a:[10,20,30]}),p:1,dr:S=>cells(pad(S.a,8)),ops:[['Insert (value @ pos)',(S,v,p)=>{if(S.a.length>=8||p<0||p>S.a.length)return'Invalid';S.a.splice(p,0,v);return`Shifted right, a[${p}]=${v}`}],['Delete @ pos',(S,v,p)=>{if(p<0||p>=S.a.length)return'Invalid';S.a.splice(p,1);return`Shifted left, removed index ${p}`}]],c:R`#include <stdio.h>
+#define MAX 8
+int a[MAX], n = 3;           // a = {10,20,30}
+
+void insert(int val, int pos) {          // O(n)
+    if (n == MAX || pos < 0 || pos > n) { printf("Invalid\n"); return; }
+    for (int i = n; i > pos; i--) a[i] = a[i-1];   // shift right
+    a[pos] = val; n++;
+}
+void delete_at(int pos) {                // O(n)
+    if (pos < 0 || pos >= n) { printf("Invalid\n"); return; }
+    for (int i = pos; i < n-1; i++) a[i] = a[i+1]; // shift left
+    n--;
+}
+void display() { for (int i = 0; i < n; i++) printf("%d ", a[i]); }`},
+{n:'Stack',d:'LIFO. push, pop and peek all work at the top index.',S:()=>({a:[]}),dr:S=>cells(pad(S.a,6),[S.a.length-1],[],{top:S.a.length-1}),ops:[['push',(S,v)=>S.a.length==6?'Stack Overflow':(S.a.push(v),`push(${v}): ++top, stack[top]=${v}`)],['pop',S=>S.a.length?`pop() returned ${S.a.pop()}, top--`:'Stack Underflow'],['peek',S=>S.a.length?`peek() = ${S.a[S.a.length-1]}`:'Stack is empty']],c:R`#include <stdio.h>
+#define MAX 6
+int stack[MAX], top = -1;
+
+void push(int x) {
+    if (top == MAX - 1) { printf("Stack Overflow\n"); return; }
+    stack[++top] = x;                    // increment then store
+}
+int pop() {
+    if (top == -1) { printf("Stack Underflow\n"); return -1; }
+    return stack[top--];                 // return then decrement
+}
+int peek() {
+    if (top == -1) { printf("Stack is empty\n"); return -1; }
+    return stack[top];
+}`},
+{n:'Queue',d:'Simple Queue: FIFO. Enqueue at rear, dequeue at front (linear array queue).',S:()=>({a:Array(6).fill(null),f:0,r:-1}),dr:S=>cells(S.a,[],[],lab({front:S.f<=S.r?S.f:-1,rear:S.r})),ops:[['enqueue',(S,v)=>S.r==5?'Queue Overflow (rear == MAX-1)':(S.a[++S.r]=v,`enqueue(${v}): rear++`)],['dequeue',S=>S.f>S.r?'Queue Underflow':(S.a[S.f]=null,`dequeue() returned item, front++`,S.f++,'dequeue: front++')]],c:R`#include <stdio.h>
+#define MAX 6
+int q[MAX], front = 0, rear = -1;
+
+void enqueue(int x) {
+    if (rear == MAX - 1) { printf("Queue Overflow\n"); return; }
+    q[++rear] = x;
+}
+int dequeue() {
+    if (front > rear) { printf("Queue Underflow\n"); return -1; }
+    return q[front++];
+}`},
+{n:'Circular Queue',d:'Indexes wrap around using the modulus operator, so freed slots are reused.',S:()=>({a:Array(5).fill(null),f:0,n:0}),dr:S=>cells(S.a,[],[],lab({front:S.n?S.f:-1,rear:S.n?(S.f+S.n-1)%5:-1})),ops:[['enqueue',(S,v)=>S.n==5?'Queue Full (count == MAX)':(S.a[(S.f+S.n++)%5]=v,`rear = (rear+1) % 5, store ${v}`)],['dequeue',S=>S.n?(S.a[S.f]=null,S.f=(S.f+1)%5,S.n--,'front = (front+1) % 5'):'Queue Empty']],c:R`#include <stdio.h>
+#define MAX 5
+int q[MAX], front = 0, rear = -1, count = 0;
+
+void enqueue(int x) {
+    if (count == MAX) { printf("Queue Full\n"); return; }
+    rear = (rear + 1) % MAX;             // wrap around
+    q[rear] = x; count++;
+}
+int dequeue() {
+    if (count == 0) { printf("Queue Empty\n"); return -1; }
+    int x = q[front];
+    front = (front + 1) % MAX;           // wrap around
+    count--; return x;
+}`},
+{n:'Linked List',d:'Nodes linked by pointers; allocated dynamically with malloc.',S:()=>({a:[]}),dr:S=>nodes(S.a),ops:[['Insert front',(S,v)=>(S.a.unshift(v),`new node ${v}; next = head; head = new`)],['Insert end',(S,v)=>(S.a.push(v),`traverse to last node; last->next = new node ${v}`)],['Delete front',S=>S.a.length?(S.a.shift(),'head = head->next; free(old)'):'List empty'],['Delete value',(S,v)=>{const i=S.a.indexOf(v);return i<0?'Value not found':(S.a.splice(i,1),`unlinked and freed ${v}`)}]],c:R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *next; };
+struct Node *head = NULL;
+
+void insertFront(int x) {
+    struct Node *n = (struct Node*)malloc(sizeof(struct Node));
+    n->data = x; n->next = head; head = n;
+}
+void insertEnd(int x) {
+    struct Node *n = (struct Node*)malloc(sizeof(struct Node));
+    n->data = x; n->next = NULL;
+    if (head == NULL) { head = n; return; }
+    struct Node *t = head;
+    while (t->next != NULL) t = t->next;
+    t->next = n;
+}
+void deleteFront() {
+    if (head == NULL) { printf("List empty\n"); return; }
+    struct Node *t = head; head = head->next; free(t);
+}
+void deleteValue(int x) {
+    struct Node *t = head, *prev = NULL;
+    while (t != NULL && t->data != x) { prev = t; t = t->next; }
+    if (t == NULL) { printf("Not found\n"); return; }
+    if (prev == NULL) head = t->next; else prev->next = t->next;
+    free(t);
+}`},
+{n:'Circular Linked List',d:'The last node points back to the head instead of NULL.',S:()=>({a:[]}),dr:S=>nodes(S.a,1),ops:[['Insert end',(S,v)=>(S.a.push(v),`last->next = new; new->next = head (${v})`)],['Delete front',S=>S.a.length?(S.a.shift(),'last->next = head->next; free(head)'):'List empty']],c:R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *next; };
+struct Node *last = NULL;      // keep pointer to last node
+
+void insertEnd(int x) {
+    struct Node *n = (struct Node*)malloc(sizeof(struct Node));
+    n->data = x;
+    if (last == NULL) { n->next = n; last = n; return; }
+    n->next = last->next;      // new node points to head
+    last->next = n;
+    last = n;
+}
+void deleteFront() {
+    if (last == NULL) { printf("List empty\n"); return; }
+    struct Node *head = last->next;
+    if (head == last) last = NULL;
+    else last->next = head->next;
+    free(head);
+}
+void display() {
+    if (last == NULL) return;
+    struct Node *t = last->next;
+    do { printf("%d ", t->data); t = t->next; } while (t != last->next);
+}`},
+{n:'Binary Search Tree',d:'Left subtree is smaller, right subtree is larger.',S:()=>({t:null}),dr:S=>bd(S.t,S.hl),ops:[['Insert',(S,v)=>(S.hl=[v],S.t=bins(S.t,v),`insert(${v}) recursively`)],['Search',(S,v)=>{let t=S.t,p=[];while(t){p.push(t.v);if(t.v==v)break;t=v<t.v?t.l:t.r}S.hl=p;return t?`Found ${v}`:`${v} not found`}],['Delete',(S,v)=>{const had=trav(S.t,1).includes(v);S.t=bdel(S.t,v);S.hl=[];return had?`Deleted ${v}`:`${v} not found`}],['Inorder',S=>(S.hl=[],'Inorder: '+trav(S.t,1).join(' '))],['Preorder',S=>'Preorder: '+trav(S.t,0).join(' ')],['Postorder',S=>'Postorder: '+trav(S.t,2).join(' ')]],c:R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *left, *right; };
+
+struct Node* newNode(int x) {
+    struct Node *n = (struct Node*)malloc(sizeof(struct Node));
+    n->data = x; n->left = n->right = NULL; return n;
+}
+struct Node* insert(struct Node *root, int x) {
+    if (root == NULL) return newNode(x);
+    if (x < root->data) root->left  = insert(root->left, x);
+    else                root->right = insert(root->right, x);
+    return root;
+}
+struct Node* search(struct Node *root, int x) {
+    if (root == NULL || root->data == x) return root;
+    return x < root->data ? search(root->left, x) : search(root->right, x);
+}
+struct Node* minNode(struct Node *r) { while (r->left != NULL) r = r->left; return r; }
+struct Node* deleteNode(struct Node *root, int x) {
+    if (root == NULL) return NULL;
+    if (x < root->data) root->left = deleteNode(root->left, x);
+    else if (x > root->data) root->right = deleteNode(root->right, x);
+    else {
+        if (root->left == NULL)  { struct Node *t = root->right; free(root); return t; }  // 0 or 1 child
+        if (root->right == NULL) { struct Node *t = root->left;  free(root); return t; }
+        struct Node *s = minNode(root->right);   // 2 children: inorder successor
+        root->data = s->data;
+        root->right = deleteNode(root->right, s->data);
+    }
+    return root;
+}
+void inorder(struct Node *r)   { if (r) { inorder(r->left); printf("%d ", r->data); inorder(r->right); } }
+void preorder(struct Node *r)  { if (r) { printf("%d ", r->data); preorder(r->left); preorder(r->right); } }
+void postorder(struct Node *r) { if (r) { postorder(r->left); postorder(r->right); printf("%d ", r->data); } }`},
+{n:'Graph',d:'Stored as an adjacency matrix. Shown graph: 6 vertices, 7 undirected edges.',fr:1,inp:'0',gen:s=>[{h:gs([],-1),m:'Graph: 0-1, 0-2, 1-3, 2-3, 2-4, 3-5, 4-5. Try BFS and DFS next.'}],c:R`#include <stdio.h>
+#define V 6
+int adj[V][V];                 // adjacency matrix
+
+void addEdge(int u, int v) {   // undirected graph
+    adj[u][v] = 1;
+    adj[v][u] = 1;
+}
+int main() {
+    addEdge(0,1); addEdge(0,2); addEdge(1,3); addEdge(2,3);
+    addEdge(2,4); addEdge(3,5); addEdge(4,5);
+    for (int i = 0; i < V; i++) {
+        for (int j = 0; j < V; j++) printf("%d ", adj[i][j]);
+        printf("\n");
+    }
+    return 0;
+}`},
+{n:'BFS',d:'Level by level using a queue. Input: start vertex (0-5).',fr:1,inp:'0',gen:bfs,c:R`#include <stdio.h>
+#define V 6
+int adj[V][V], visited[V];
+int queue[V], front = 0, rear = -1;
+
+void bfs(int start) {
+    visited[start] = 1;
+    queue[++rear] = start;                 // enqueue
+    while (front <= rear) {
+        int u = queue[front++];            // dequeue
+        printf("%d ", u);
+        for (int v = 0; v < V; v++)
+            if (adj[u][v] && !visited[v]) {
+                visited[v] = 1;
+                queue[++rear] = v;         // enqueue neighbour
+            }
+    }
+}`},
+{n:'DFS',d:'Goes deep first using recursion (the call stack). Input: start vertex (0-5).',fr:1,inp:'0',gen:dfs,c:R`#include <stdio.h>
+#define V 6
+int adj[V][V], visited[V];
+
+void dfs(int u) {
+    visited[u] = 1;
+    printf("%d ", u);
+    for (int v = 0; v < V; v++)
+        if (adj[u][v] && !visited[v])
+            dfs(v);                        // recursive call
+}`},
+{n:'Bubble Sort',d:'Repeatedly swaps adjacent out-of-order items. O(n²).',fr:1,inp:'5,3,8,1,9,2',gen:s=>bub(num(s)),c:R`void bubbleSort(int a[], int n) {
+    for (int i = 0; i < n - 1; i++)
+        for (int j = 0; j < n - 1 - i; j++)
+            if (a[j] > a[j+1]) {           // compare neighbours
+                int t = a[j]; a[j] = a[j+1]; a[j+1] = t;   // swap
+            }
+}`},
+{n:'Selection Sort',d:'Select the minimum of the unsorted part and place it at the front. O(n²).',fr:1,inp:'5,3,8,1,9,2',gen:s=>sel(num(s)),c:R`void selectionSort(int a[], int n) {
+    for (int i = 0; i < n - 1; i++) {
+        int min = i;
+        for (int j = i + 1; j < n; j++)
+            if (a[j] < a[min]) min = j;
+        int t = a[i]; a[i] = a[min]; a[min] = t;
+    }
+}`},
+{n:'Insertion Sort',d:'Insert each key into its place within the sorted left part. O(n²).',fr:1,inp:'5,3,8,1,9,2',gen:s=>ins(num(s)),c:R`void insertionSort(int a[], int n) {
+    for (int i = 1; i < n; i++) {
+        int key = a[i], j = i - 1;
+        while (j >= 0 && a[j] > key) {
+            a[j+1] = a[j];                 // shift right
+            j--;
+        }
+        a[j+1] = key;
+    }
+}`},
+{n:'Quick Sort',d:'Partition around a pivot, then sort both sides. Average O(n log n).',fr:1,inp:'5,3,8,1,9,2',gen:s=>qs(num(s)),c:R`int partition(int a[], int lo, int hi) {
+    int pivot = a[hi], i = lo - 1;
+    for (int j = lo; j < hi; j++)
+        if (a[j] < pivot) {
+            i++;
+            int t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+    int t = a[i+1]; a[i+1] = a[hi]; a[hi] = t;
+    return i + 1;
+}
+void quickSort(int a[], int lo, int hi) {
+    if (lo < hi) {
+        int p = partition(a, lo, hi);
+        quickSort(a, lo, p - 1);
+        quickSort(a, p + 1, hi);
+    }
+}`},
+{n:'Merge Sort',d:'Divide in halves, sort each, merge. Always O(n log n).',fr:1,inp:'5,3,8,1,9,2',gen:s=>ms(num(s)),c:R`#include <stdlib.h>
+void merge(int a[], int l, int m, int r) {
+    int n1 = m - l + 1, n2 = r - m;
+    int *L = malloc(n1 * sizeof(int)), *R = malloc(n2 * sizeof(int));
+    for (int i = 0; i < n1; i++) L[i] = a[l + i];
+    for (int j = 0; j < n2; j++) R[j] = a[m + 1 + j];
+    int i = 0, j = 0, k = l;
+    while (i < n1 && j < n2) a[k++] = (L[i] <= R[j]) ? L[i++] : R[j++];
+    while (i < n1) a[k++] = L[i++];
+    while (j < n2) a[k++] = R[j++];
+    free(L); free(R);
+}
+void mergeSort(int a[], int l, int r) {
+    if (l < r) {
+        int m = (l + r) / 2;
+        mergeSort(a, l, m);
+        mergeSort(a, m + 1, r);
+        merge(a, l, m, r);
+    }
+}`},
+{n:'Linear Search',d:'Check every element in order. Input: array;target',fr:1,inp:'5,8,12,20,31,40;20',gen:lin,c:R`int linearSearch(int a[], int n, int key) {
+    for (int i = 0; i < n; i++)
+        if (a[i] == key) return i;         // found
+    return -1;                             // not found
+}`},
+{n:'Binary Search',d:'Halve the sorted range each step. O(log n). Input: array;target',fr:1,inp:'5,8,12,20,31,40;31',gen:bin,c:R`int binarySearch(int a[], int n, int key) {   // a[] must be sorted
+    int lo = 0, hi = n - 1;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (a[mid] == key) return mid;
+        else if (a[mid] < key) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return -1;
+}`},
+{n:'Hashing',d:'Hash function key % 7 with linear probing for collisions.',S:()=>({a:Array(7).fill(null)}),dr:S=>cells(S.a),ops:[['Insert',(S,v)=>{let i=v%7,k=0,s=`h(${v}) = ${v}%7 = ${i}`;while(S.a[i]!=null&&k<7){s+=`, slot ${i} full`;i=(i+1)%7;k++}if(k==7)return'Table full';S.a[i]=v;return s+`, stored at ${i}`}],['Search',(S,v)=>{let i=v%7;for(let k=0;k<7;k++,i=(i+1)%7)if(S.a[i]==v)return`Found at index ${i}`;return'Not found'}]],c:R`#include <stdio.h>
+#define SIZE 7
+int table[SIZE];                           // -1 means empty
+
+void init() { for (int i = 0; i < SIZE; i++) table[i] = -1; }
+
+void insert(int key) {
+    int i = key % SIZE;                    // hash function
+    for (int k = 0; k < SIZE; k++) {
+        if (table[i] == -1) { table[i] = key; return; }
+        i = (i + 1) % SIZE;                // linear probing
+    }
+    printf("Table full\n");
+}
+int search(int key) {
+    int i = key % SIZE;
+    for (int k = 0; k < SIZE; k++) {
+        if (table[i] == key) return i;
+        i = (i + 1) % SIZE;
+    }
+    return -1;
+}`},
+{n:'Infix to Postfix',d:'Operator stack with precedence. Input: expression (letters/digits, + - * / ^ and brackets).',fr:1,inp:'A+B*C-(D/E)',gen:i2p,c:R`#include <stdio.h>
+#include <ctype.h>
+char stack[50]; int top = -1;
+void push(char c) { stack[++top] = c; }
+char pop() { return stack[top--]; }
+int prec(char c) {
+    if (c == '^') return 3;
+    if (c == '*' || c == '/') return 2;
+    if (c == '+' || c == '-') return 1;
+    return 0;
+}
+void infixToPostfix(char *e) {
+    for (int i = 0; e[i]; i++) {
+        char c = e[i];
+        if (isalnum(c)) printf("%c", c);          // operand
+        else if (c == '(') push(c);
+        else if (c == ')') {
+            while (stack[top] != '(') printf("%c", pop());
+            pop();                                // discard '('
+        } else {
+            while (top != -1 && prec(stack[top]) >= prec(c))
+                printf("%c", pop());
+            push(c);
+        }
+    }
+    while (top != -1) printf("%c", pop());
+}`},
+{n:'Postfix Evaluation',d:'Push operands; on an operator pop two, compute, push the result. Input: space-separated tokens.',fr:1,inp:'2 3 1 * + 9 -',gen:pfe,c:R`#include <stdio.h>
+#include <ctype.h>
+int stack[50], top = -1;
+
+int evaluate(char *e) {                    // single-digit operands
+    for (int i = 0; e[i]; i++) {
+        char c = e[i];
+        if (isdigit(c)) stack[++top] = c - '0';
+        else if (c != ' ') {
+            int b = stack[top--], a = stack[top--];
+            switch (c) {
+                case '+': stack[++top] = a + b; break;
+                case '-': stack[++top] = a - b; break;
+                case '*': stack[++top] = a * b; break;
+                case '/': stack[++top] = a / b; break;
+            }
+        }
+    }
+    return stack[top];
+}`}];
+const bdel=(t,v)=>{if(!t)return null;if(v<t.v)t.l=bdel(t.l,v);else if(v>t.v)t.r=bdel(t.r,v);else{if(!t.l)return t.r;if(!t.r)return t.l;let s=t.r;while(s.l)s=s.l;t.v=s.v;t.r=bdel(t.r,s.v)}return t};
+const dg=x=>`<div class=t style="white-space:pre;overflow-x:auto">${x}</div>`;
+const sx=(n,d,s,c)=>T.push({n,d,s,c});
+const pp=(n,o,e,c,out)=>T.push({n,d:'Objective: '+o,s:`<p><b>Simple explanation:</b> ${e}</p><b>Expected output:</b><pre>${out}</pre>`,c});
+// ----- Unit 1 -----
+sx('Introduction to Data Structures','A data structure is a way of organising data in memory so it can be used efficiently.',dg(`Data Structures
+├─ Primitive: int, char, float, double, pointer
+└─ Non-primitive
+   ├─ Linear: Array, Stack, Queue, Linked List
+   └─ Non-linear: Tree, Graph`)+'<p>Linear: elements form a sequence, one after another. Non-linear: an element can connect to many others (hierarchy or network).</p>',R`#include <stdio.h>
+struct Student { int roll; float marks; };   // non-primitive (user defined)
+int main() {
+    int i = 5; char c = 'A'; float f = 2.5f; double d = 3.14;   // primitive types
+    int arr[3] = {1, 2, 3};                  // non-primitive, linear
+    struct Student s = {1, 85.5f};
+    printf("sizeof int=%zu char=%zu float=%zu double=%zu\n", sizeof(int), sizeof(char), sizeof(float), sizeof(double));
+    printf("Student: %d %.1f\n", s.roll, s.marks);
+    return 0;
+}`);
+sx('Algorithms & Complexity','An algorithm is a finite, step-by-step procedure with input, output and clear steps. Time complexity = number of steps; space complexity = extra memory used.',dg(`Time complexity (growth with input size n)
+O(1)       constant      array access
+O(log n)   logarithmic   binary search
+O(n)       linear        linear search
+O(n log n) linearithmic  merge sort, quick sort (average)
+O(n²)      quadratic     bubble, selection, insertion sort
+
+Space complexity: iterative sum O(1), copying an array O(n),
+recursion depth n uses O(n) stack space.`),R`#include <stdio.h>
+int sumN(int n) {                 // Time O(n), Space O(1)
+    int sum = 0;
+    for (int i = 1; i <= n; i++) sum += i;
+    return sum;
+}
+int sumFormula(int n) { return n * (n + 1) / 2; }   // Time O(1), Space O(1)
+int pairs(int n) {                // Time O(n*n), Space O(1)
+    int count = 0;
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++) count++;
+    return count;
+}
+int factRec(int n) { return n <= 1 ? 1 : n * factRec(n - 1); }   // Time O(n), Space O(n)
+int main() {
+    printf("%d %d %d %d\n", sumN(10), sumFormula(10), pairs(4), factRec(5));   // 55 55 16 120
+    return 0;
+}`);
+sx('2D Arrays & Matrix','A 2D array stores a matrix as rows and columns. Memory is linear, so it is stored row-major (C) or column-major.',dg(`Matrix 2x3:   1 2 3
+              4 5 6
+Row-major memory   : 1 2 3 4 5 6   Address = Base + (i*cols + j)*size
+Column-major memory: 1 4 2 5 3 6   Address = Base + (j*rows + i)*size`)+'<p>C uses row-major order.</p>',R`#include <stdio.h>
+int main() {
+    int a[2][3] = {{1, 2, 3}, {4, 5, 6}}, t[3][2];
+    printf("Matrix:\n");
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 3; j++) printf("%d ", a[i][j]);
+        printf("\n");
+    }
+    printf("Row-major    : ");
+    for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++) printf("%d ", a[i][j]);
+    printf("\nColumn-major : ");
+    for (int j = 0; j < 3; j++) for (int i = 0; i < 2; i++) printf("%d ", a[i][j]);
+    for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++) t[j][i] = a[i][j];   // transpose
+    printf("\nTranspose:\n");
+    for (int i = 0; i < 3; i++) { for (int j = 0; j < 2; j++) printf("%d ", t[i][j]); printf("\n"); }
+    return 0;
+}`);
+sx('Sparse Matrix','A matrix with mostly zeros. Store only non-zero values as triplets (row, column, value) to save memory.',dg(`4x4 matrix           Triplet form
+0 0 5 0              Row Col Val
+0 0 0 0              4   4   3    (rows, cols, non-zero count)
+7 0 0 0              0   2   5
+0 0 0 9              2   0   7
+                     3   3   9`),R`#include <stdio.h>
+int main() {
+    int m[4][4] = {{0,0,5,0},{0,0,0,0},{7,0,0,0},{0,0,0,9}};
+    int t[10][3], k = 1;
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            if (m[i][j] != 0) { t[k][0] = i; t[k][1] = j; t[k][2] = m[i][j]; k++; }
+    t[0][0] = 4; t[0][1] = 4; t[0][2] = k - 1;     // header row
+    printf("Row Col Val\n");
+    for (int i = 0; i < k; i++) printf("%3d %3d %3d\n", t[i][0], t[i][1], t[i][2]);
+    return 0;
+}`);
+// ----- Unit 2 -----
+sx('Stack Applications & Recursion','Stack uses: function calls and recursion, undo, parenthesis checking, expression conversion, reversing. Recursion = a function calling itself with a base case; each call waits on the call stack.',dg(`fact(3) → 3 * fact(2)
+            → 2 * fact(1)
+                → 1 * fact(0) → 1   (base case)
+returns: 1 → 1 → 2 → 6`),R`#include <stdio.h>
+int fact(int n) {
+    if (n == 0) return 1;            // base case
+    return n * fact(n - 1);          // recursive case
+}
+int fib(int n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }
+int main() {
+    printf("5! = %d\n", fact(5));
+    printf("Fibonacci: ");
+    for (int i = 0; i < 7; i++) printf("%d ", fib(i));
+    return 0;
+}`);
+sx('Parenthesis Checking','Push every opening bracket. On a closing bracket, pop and match. Balanced only if nothing is left on the stack. Time O(n).',dg(`{[(a+b)*c]}  → Balanced
+((a+b)       → Not balanced (extra opening)
+[(a+b])      → Not balanced (mismatch)`),R`#include <stdio.h>
+char stack[50]; int top = -1;
+int isMatch(char o, char c) { return (o=='(' && c==')') || (o=='[' && c==']') || (o=='{' && c=='}'); }
+int balanced(char *e) {
+    top = -1;
+    for (int i = 0; e[i]; i++) {
+        char c = e[i];
+        if (c=='(' || c=='[' || c=='{') stack[++top] = c;
+        else if (c==')' || c==']' || c=='}') {
+            if (top == -1 || !isMatch(stack[top--], c)) return 0;
+        }
+    }
+    return top == -1;
+}
+int main() {
+    char *t[] = {"{[(a+b)*c]}", "((a+b)", "[(a+b])"};
+    for (int i = 0; i < 3; i++) printf("%s -> %s\n", t[i], balanced(t[i]) ? "Balanced" : "Not balanced");
+    return 0;
+}`);
+sx('Tower of Hanoi','Move n disks from A to C using B. Only one disk moves at a time and a bigger disk never sits on a smaller one. Moves needed = 2ⁿ − 1.',dg(`n = 3 output (7 moves):
+Move disk 1 from A to C
+Move disk 2 from A to B
+Move disk 1 from C to B
+Move disk 3 from A to C
+Move disk 1 from B to A
+Move disk 2 from B to C
+Move disk 1 from A to C`),R`#include <stdio.h>
+void hanoi(int n, char from, char to, char aux) {
+    if (n == 1) { printf("Move disk 1 from %c to %c\n", from, to); return; }
+    hanoi(n - 1, from, aux, to);                       // move n-1 disks out of the way
+    printf("Move disk %d from %c to %c\n", n, from, to);
+    hanoi(n - 1, aux, to, from);                       // move them onto the big disk
+}
+int main() { hanoi(3, 'A', 'C', 'B'); return 0; }      // 2^3 - 1 = 7 moves`);
+sx('Infix, Prefix & Postfix','Infix: operator between operands (A+B). Prefix: operator before (+AB). Postfix: operator after (AB+). Prefix and postfix need no brackets.',dg(`Infix       Prefix     Postfix
+A+B         +AB        AB+
+A+B*C       +A*BC      ABC*+
+(A+B)*C     *+ABC      AB+C*`)+'<p>Postfix is covered in the next two topics. Below: evaluating a prefix expression (scan right to left).</p>',R`#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+int stack[50], top = -1;
+int evalPrefix(char *e) {                    // scan right to left
+    for (int i = strlen(e) - 1; i >= 0; i--) {
+        if (isdigit(e[i])) stack[++top] = e[i] - '0';
+        else {
+            int a = stack[top--], b = stack[top--];   // a is the first operand
+            switch (e[i]) {
+                case '+': stack[++top] = a + b; break;
+                case '-': stack[++top] = a - b; break;
+                case '*': stack[++top] = a * b; break;
+                case '/': stack[++top] = a / b; break;
+            }
+        }
+    }
+    return stack[top];
+}
+int main() { printf("*+234 = %d\n", evalPrefix("*+234")); return 0; }   // (2+3)*4 = 20`);
+sx('Priority Queue','Every element has a priority; the highest priority (here the smallest value) leaves first. Array kept sorted: enqueue O(n), dequeue O(n).',dg(`enqueue 30, 10, 20 → [10, 20, 30]
+dequeue → 10, then 20`),R`#include <stdio.h>
+#define MAX 10
+int pq[MAX], n = 0;    // sorted array: smallest value (highest priority) at index 0
+void enqueue(int x) {
+    if (n == MAX) { printf("Queue Full\n"); return; }
+    int i = n - 1;
+    while (i >= 0 && pq[i] > x) { pq[i+1] = pq[i]; i--; }   // shift larger values right
+    pq[i+1] = x; n++;
+}
+int dequeue() {
+    if (n == 0) { printf("Queue Empty\n"); return -1; }
+    int x = pq[0];
+    for (int i = 0; i < n - 1; i++) pq[i] = pq[i+1];
+    n--; return x;
+}
+int main() {
+    enqueue(30); enqueue(10); enqueue(20);
+    printf("Dequeued: %d\n", dequeue());
+    printf("Dequeued: %d\n", dequeue());
+    return 0;
+}`);
+sx('Deque','Double-ended queue: insert and delete at both front and rear. Here: circular array, all operations O(1).',dg(`insertRear 10, 20 → [10 20]
+insertFront 5      → [5 10 20]
+deleteFront → 5, deleteRear → 20 → [10]`),R`#include <stdio.h>
+#define MAX 5
+int dq[MAX], front = 0, count = 0;
+void insertRear(int x)  { if (count == MAX) { printf("Full\n"); return; } dq[(front + count) % MAX] = x; count++; }
+void insertFront(int x) { if (count == MAX) { printf("Full\n"); return; } front = (front - 1 + MAX) % MAX; dq[front] = x; count++; }
+int deleteFront() { if (count == 0) { printf("Empty\n"); return -1; } int x = dq[front]; front = (front + 1) % MAX; count--; return x; }
+int deleteRear()  { if (count == 0) { printf("Empty\n"); return -1; } count--; return dq[(front + count) % MAX]; }
+void display() { for (int i = 0; i < count; i++) printf("%d ", dq[(front + i) % MAX]); printf("\n"); }
+int main() {
+    insertRear(10); insertRear(20); insertFront(5);
+    display();
+    printf("Deleted front: %d\n", deleteFront());
+    printf("Deleted rear: %d\n", deleteRear());
+    display();
+    return 0;
+}`);
+// ----- Unit 3 -----
+sx('Doubly Linked List','Each node has prev and next pointers, so traversal works in both directions.',dg(`NULL ⇄ [10] ⇄ [20] ⇄ [30] ⇄ NULL`),R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *prev, *next; };
+struct Node *head = NULL;
+struct Node* newNode(int x) { struct Node *n = malloc(sizeof(struct Node)); n->data = x; n->prev = n->next = NULL; return n; }
+void insertFront(int x) {
+    struct Node *n = newNode(x);
+    n->next = head;
+    if (head != NULL) head->prev = n;
+    head = n;
+}
+void insertEnd(int x) {
+    struct Node *n = newNode(x), *t = head;
+    if (head == NULL) { head = n; return; }
+    while (t->next != NULL) t = t->next;
+    t->next = n; n->prev = t;
+}
+void deleteValue(int x) {
+    struct Node *t = head;
+    while (t != NULL && t->data != x) t = t->next;
+    if (t == NULL) { printf("Not found\n"); return; }
+    if (t->prev != NULL) t->prev->next = t->next; else head = t->next;
+    if (t->next != NULL) t->next->prev = t->prev;
+    free(t);
+}
+void display() { for (struct Node *t = head; t != NULL; t = t->next) printf("%d <-> ", t->data); printf("NULL\n"); }
+int main() {
+    insertEnd(20); insertEnd(30); insertFront(10);
+    display();           // 10 <-> 20 <-> 30 <-> NULL
+    deleteValue(20);
+    display();           // 10 <-> 30 <-> NULL
+    return 0;
+}`);
+sx('Doubly Circular Linked List','Doubly linked list where last->next = first and first->prev = last.',dg(`   ┌──────────────────────────┐
+   ↓                          │
+  [10] ⇄ [20] ⇄ [30] ─────────┘ (30.next = 10, 10.prev = 30)`),R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *prev, *next; };
+struct Node *head = NULL;
+void insertEnd(int x) {
+    struct Node *n = malloc(sizeof(struct Node)); n->data = x;
+    if (head == NULL) { n->next = n->prev = n; head = n; return; }
+    struct Node *last = head->prev;
+    n->next = head; n->prev = last;
+    last->next = n; head->prev = n;
+}
+void deleteFront() {
+    if (head == NULL) { printf("Empty\n"); return; }
+    struct Node *t = head;
+    if (t->next == t) head = NULL;
+    else { t->prev->next = t->next; t->next->prev = t->prev; head = t->next; }
+    free(t);
+}
+void display() {
+    if (head == NULL) return;
+    struct Node *t = head;
+    do { printf("%d ", t->data); t = t->next; } while (t != head);
+    printf("\n");
+}
+int main() {
+    insertEnd(10); insertEnd(20); insertEnd(30);
+    display();           // 10 20 30
+    deleteFront();
+    display();           // 20 30
+    return 0;
+}`);
+sx('Stack using Linked List','Push = insert at head, pop = delete from head. No fixed size, no overflow. All operations O(1).',dg(`top → [30] → [20] → [10] → NULL`),R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *next; };
+struct Node *top = NULL;
+void push(int x) {
+    struct Node *n = malloc(sizeof(struct Node));
+    n->data = x; n->next = top; top = n;
+}
+int pop() {
+    if (top == NULL) { printf("Stack Underflow\n"); return -1; }
+    struct Node *t = top; int x = t->data;
+    top = top->next; free(t); return x;
+}
+int peek() { return top == NULL ? -1 : top->data; }
+int main() {
+    push(10); push(20); push(30);
+    printf("Peek: %d\n", peek());      // 30
+    printf("Popped: %d\n", pop());     // 30
+    printf("Popped: %d\n", pop());     // 20
+    return 0;
+}`);
+sx('Queue using Linked List','Enqueue at the tail (rear pointer), dequeue from the head (front pointer). All operations O(1).',dg(`front → [10] → [20] → [30] ← rear`),R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *next; };
+struct Node *front = NULL, *rear = NULL;
+void enqueue(int x) {
+    struct Node *n = malloc(sizeof(struct Node));
+    n->data = x; n->next = NULL;
+    if (rear == NULL) front = rear = n;
+    else { rear->next = n; rear = n; }
+}
+int dequeue() {
+    if (front == NULL) { printf("Queue Underflow\n"); return -1; }
+    struct Node *t = front; int x = t->data;
+    front = front->next;
+    if (front == NULL) rear = NULL;
+    free(t); return x;
+}
+int main() {
+    enqueue(10); enqueue(20); enqueue(30);
+    printf("Dequeued: %d\n", dequeue());   // 10
+    printf("Dequeued: %d\n", dequeue());   // 20
+    return 0;
+}`);
+// ----- Unit 4 -----
+sx('Tree Basics & Binary Tree','A tree is a non-linear hierarchy of nodes. A binary tree: every node has at most 2 children (left, right).',dg(`        1        root (level 0)
+       / \\       parent = 1, children = 2 and 3
+      2   3      3 is a leaf (no children)
+     / \\        siblings: 4 and 5
+    4   5        height = 3, nodes = 5`),R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *left, *right; };
+struct Node* newNode(int x) {
+    struct Node *n = malloc(sizeof(struct Node));
+    n->data = x; n->left = n->right = NULL; return n;
+}
+int count(struct Node *r)  { return r == NULL ? 0 : 1 + count(r->left) + count(r->right); }
+int height(struct Node *r) {
+    if (r == NULL) return 0;
+    int l = height(r->left), rt = height(r->right);
+    return 1 + (l > rt ? l : rt);
+}
+int main() {
+    struct Node *root = newNode(1);
+    root->left = newNode(2); root->right = newNode(3);
+    root->left->left = newNode(4); root->left->right = newNode(5);
+    printf("Nodes = %d, Height = %d\n", count(root), height(root));   // 5, 3
+    return 0;
+}`);
+// ----- Unit 5 -----
+sx('Graph Types & Adjacency List','Graph G = (V, E). Directed: edges have a direction. Undirected: two-way. Weighted: edges carry a cost. Cyclic: contains a cycle. Acyclic: no cycle (a directed one is a DAG).',dg(`Undirected graph: 0-1, 0-2, 1-2, 2-3
+Adjacency list          Adjacency matrix
+0 → 1 → 2               0 1 1 0
+1 → 0 → 2               1 0 1 0
+2 → 0 → 1 → 3           1 1 0 1
+3 → 2                   0 0 1 0
+Matrix space O(V²), list space O(V+E)`),R`#include <stdio.h>
+#include <stdlib.h>
+#define V 4
+struct Node { int vertex, weight; struct Node *next; };
+struct Node *adj[V];                         // array of linked lists
+void addEdge(int u, int v, int w, int directed) {
+    struct Node *n = malloc(sizeof(struct Node));
+    n->vertex = v; n->weight = w; n->next = adj[u]; adj[u] = n;
+    if (!directed) {                         // undirected: also add reverse edge
+        n = malloc(sizeof(struct Node));
+        n->vertex = u; n->weight = w; n->next = adj[v]; adj[v] = n;
+    }
+}
+int main() {
+    addEdge(0, 1, 5, 0); addEdge(0, 2, 3, 0); addEdge(1, 2, 2, 0); addEdge(2, 3, 7, 0);
+    for (int i = 0; i < V; i++) {
+        printf("%d:", i);
+        for (struct Node *t = adj[i]; t != NULL; t = t->next) printf(" -> %d(w=%d)", t->vertex, t->weight);
+        printf("\n");
+    }
+    return 0;
+}`);
+// ----- Unit 6 -----
+sx('Sorting & Searching Overview','Sorting arranges data in order; searching finds a key.',dg(`Algorithm        Best        Average     Worst       Space
+Bubble           O(n)        O(n²)       O(n²)       O(1)
+Selection        O(n²)       O(n²)       O(n²)       O(1)
+Insertion        O(n)        O(n²)       O(n²)       O(1)
+Quick            O(n log n)  O(n log n)  O(n²)       O(log n)
+Merge            O(n log n)  O(n log n)  O(n log n)  O(n)
+Linear search    O(1)        O(n)        O(n)        O(1)
+Binary search    O(1)        O(log n)    O(log n)    O(1)  (sorted data)`),R`#include <stdio.h>
+void swap(int *a, int *b) { int t = *a; *a = *b; *b = t; }   // used by the sorting programs
+void printArray(int a[], int n) { for (int i = 0; i < n; i++) printf("%d ", a[i]); printf("\n"); }
+int main() { int x = 1, y = 2; swap(&x, &y); printf("%d %d\n", x, y); return 0; }   // 2 1`);
+sx('Hash Functions & Collisions','Hash function maps a key to a table index: division h = k % size, mid-square, folding. A symbol table stores (name, value) pairs, such as a compiler keeping identifiers. Collision: two keys get the same index. Resolve by chaining (linked list per slot) or open addressing (linear or quadratic probing, see Hashing).',dg(`Keys 12, 22, 7, 15, 32 with size 5 (chaining)
+[0] → 15
+[1]
+[2] → 32 → 7 → 22 → 12
+[3]
+[4]`),R`#include <stdio.h>
+#include <stdlib.h>
+#define SIZE 5
+struct Node { int key; struct Node *next; };
+struct Node *table[SIZE];
+void insert(int key) {
+    int i = key % SIZE;                                  // hash function
+    struct Node *n = malloc(sizeof(struct Node));
+    n->key = key; n->next = table[i]; table[i] = n;      // collision: add to chain
+}
+int search(int key) {
+    for (struct Node *t = table[key % SIZE]; t != NULL; t = t->next)
+        if (t->key == key) return 1;
+    return 0;
+}
+int main() {
+    int keys[] = {12, 22, 7, 15, 32};
+    for (int i = 0; i < 5; i++) insert(keys[i]);
+    for (int i = 0; i < SIZE; i++) {
+        printf("[%d]", i);
+        for (struct Node *t = table[i]; t != NULL; t = t->next) printf(" -> %d", t->key);
+        printf("\n");
+    }
+    printf("search 22: %s\n", search(22) ? "found" : "not found");
+    return 0;
+}`);
+// ----- Practicals -----
+pp('P1: Array Operations','Insert, delete, traverse and search in an array.','Insertion shifts elements right, deletion shifts left, search compares each element.',R`#include <stdio.h>
+int main() {
+    int a[10] = {10, 20, 30, 40, 50}, n = 5, i, pos, val, key, found = 0;
+    printf("Array: ");                                   // traversal
+    for (i = 0; i < n; i++) printf("%d ", a[i]);
+    pos = 2; val = 25;                                   // insertion
+    for (i = n; i > pos; i--) a[i] = a[i-1];
+    a[pos] = val; n++;
+    printf("\nAfter inserting 25 at index 2: ");
+    for (i = 0; i < n; i++) printf("%d ", a[i]);
+    pos = 0;                                             // deletion
+    for (i = pos; i < n - 1; i++) a[i] = a[i+1];
+    n--;
+    printf("\nAfter deleting index 0: ");
+    for (i = 0; i < n; i++) printf("%d ", a[i]);
+    key = 40;                                            // linear search
+    for (i = 0; i < n; i++)
+        if (a[i] == key) { printf("\n%d found at index %d\n", key, i); found = 1; break; }
+    if (!found) printf("\n%d not found\n", key);
+    return 0;
+}`,'Array: 10 20 30 40 50 \nAfter inserting 25 at index 2: 10 20 25 30 40 50 \nAfter deleting index 0: 20 25 30 40 50 \n40 found at index 3'.replace(/\\n/g,'\n'));
+pp('P2: Reverse Array using Pointers','Reverse an array in place with pointers.','One pointer starts at the first element, one at the last. Swap and move them towards each other.',R`#include <stdio.h>
+int main() {
+    int a[5] = {1, 2, 3, 4, 5}, *p = a, *q = a + 4, t;
+    while (p < q) { t = *p; *p = *q; *q = t; p++; q--; }
+    printf("Reversed: ");
+    for (int i = 0; i < 5; i++) printf("%d ", *(a + i));
+    return 0;
+}`,'Reversed: 5 4 3 2 1');
+pp('P3: Call by Value & Reference','Show the difference between call by value and call by reference.','By value passes a copy, so the original is unchanged. By reference passes the address, so the original changes.',R`#include <stdio.h>
+void byValue(int x) { x = x + 10; printf("Inside byValue: %d\n", x); }
+void byRef(int *x)  { *x = *x + 10; printf("Inside byRef: %d\n", *x); }
+int main() {
+    int n = 5;
+    byValue(n);  printf("After byValue: %d\n", n);
+    byRef(&n);   printf("After byRef: %d\n", n);
+    return 0;
+}`,'Inside byValue: 15\nAfter byValue: 5\nInside byRef: 15\nAfter byRef: 15'.replace(/\\n/g,'\n'));
+pp('P4: Stack using Array','Implement push, pop, peek and display.','top starts at -1. Push increments top then stores. Pop returns the value then decrements top.',R`#include <stdio.h>
+#define MAX 5
+int stack[MAX], top = -1;
+void push(int x) { if (top == MAX - 1) printf("Stack Overflow\n"); else stack[++top] = x; }
+int pop() { if (top == -1) { printf("Stack Underflow\n"); return -1; } return stack[top--]; }
+int peek() { return top == -1 ? -1 : stack[top]; }
+void display() { printf("Stack:"); for (int i = top; i >= 0; i--) printf(" %d", stack[i]); printf("\n"); }
+int main() {
+    push(10); push(20); push(30);
+    display();
+    printf("Popped: %d\n", pop());
+    printf("Peek: %d\n", peek());
+    display();
+    return 0;
+}`,'Stack: 30 20 10\nPopped: 30\nPeek: 20\nStack: 20 10'.replace(/\\n/g,'\n'));
+pp('P5: Infix to Postfix','Convert an infix expression to postfix using a stack.','Operands go straight to output. Operators wait on the stack until a lower-precedence operator arrives.',R`#include <stdio.h>
+#include <ctype.h>
+char stack[50]; int top = -1;
+int prec(char c) { if (c == '^') return 3; if (c == '*' || c == '/') return 2; if (c == '+' || c == '-') return 1; return 0; }
+int main() {
+    char e[] = "A+B*C-(D/E)", post[50];
+    int k = 0;
+    for (int i = 0; e[i]; i++) {
+        char c = e[i];
+        if (isalnum(c)) post[k++] = c;
+        else if (c == '(') stack[++top] = c;
+        else if (c == ')') { while (stack[top] != '(') post[k++] = stack[top--]; top--; }
+        else { while (top != -1 && prec(stack[top]) >= prec(c)) post[k++] = stack[top--]; stack[++top] = c; }
+    }
+    while (top != -1) post[k++] = stack[top--];
+    post[k] = '\0';
+    printf("Infix  : %s\nPostfix: %s\n", e, post);
+    return 0;
+}`,'Infix  : A+B*C-(D/E)\nPostfix: ABC*+DE/-'.replace(/\\n/g,'\n'));
+pp('P6: Postfix Evaluation','Evaluate a postfix expression using a stack.','Push digits. On an operator, pop two values, apply it, push the result.',R`#include <stdio.h>
+#include <ctype.h>
+int stack[50], top = -1;
+int main() {
+    char e[] = "231*+9-";                  // 2 + 3*1 - 9
+    for (int i = 0; e[i]; i++) {
+        if (isdigit(e[i])) stack[++top] = e[i] - '0';
+        else {
+            int b = stack[top--], a = stack[top--];
+            switch (e[i]) {
+                case '+': stack[++top] = a + b; break;
+                case '-': stack[++top] = a - b; break;
+                case '*': stack[++top] = a * b; break;
+                case '/': stack[++top] = a / b; break;
+            }
+        }
+    }
+    printf("Postfix: %s\nResult : %d\n", e, stack[top]);
+    return 0;
+}`,'Postfix: 231*+9-\nResult : -4'.replace(/\\n/g,'\n'));
+pp('P7: Simple Queue','Implement a linear queue with enqueue, dequeue and display.','Insert at rear, remove at front. Front and rear only move forward.',R`#include <stdio.h>
+#define MAX 5
+int q[MAX], front = 0, rear = -1;
+void enqueue(int x) { if (rear == MAX - 1) printf("Queue Overflow\n"); else q[++rear] = x; }
+int dequeue() { if (front > rear) { printf("Queue Underflow\n"); return -1; } return q[front++]; }
+void display() { printf("Queue:"); for (int i = front; i <= rear; i++) printf(" %d", q[i]); printf("\n"); }
+int main() {
+    enqueue(10); enqueue(20); enqueue(30);
+    display();
+    printf("Dequeued: %d\n", dequeue());
+    display();
+    return 0;
+}`,'Queue: 10 20 30\nDequeued: 10\nQueue: 20 30'.replace(/\\n/g,'\n'));
+pp('P8: Circular Queue','Implement a circular queue.','Indexes wrap around with % MAX, so space freed by dequeue is reused.',R`#include <stdio.h>
+#define MAX 3
+int q[MAX], front = 0, rear = -1, count = 0;
+void enqueue(int x) {
+    if (count == MAX) { printf("Queue Full\n"); return; }
+    rear = (rear + 1) % MAX; q[rear] = x; count++;
+}
+int dequeue() {
+    if (count == 0) { printf("Queue Empty\n"); return -1; }
+    int x = q[front]; front = (front + 1) % MAX; count--; return x;
+}
+void display() { printf("Queue:"); for (int i = 0; i < count; i++) printf(" %d", q[(front + i) % MAX]); printf("\n"); }
+int main() {
+    enqueue(10); enqueue(20); enqueue(30);
+    enqueue(40);                       // full
+    printf("Dequeued: %d\n", dequeue());
+    enqueue(40);                       // reuses freed slot
+    display();
+    return 0;
+}`,'Queue Full\nDequeued: 10\nQueue: 20 30 40'.replace(/\\n/g,'\n'));
+pp('P9: Singly Linked List','Insert at front and end, delete from front, display.','Each node holds data and a pointer to the next node. head points to the first node.',R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *next; };
+struct Node *head = NULL;
+struct Node* newNode(int x) { struct Node *n = malloc(sizeof(struct Node)); n->data = x; n->next = NULL; return n; }
+void insertFront(int x) { struct Node *n = newNode(x); n->next = head; head = n; }
+void insertEnd(int x) {
+    struct Node *n = newNode(x), *t = head;
+    if (head == NULL) { head = n; return; }
+    while (t->next != NULL) t = t->next;
+    t->next = n;
+}
+void deleteFront() {
+    if (head == NULL) { printf("List empty\n"); return; }
+    struct Node *t = head; head = head->next; free(t);
+}
+void display() { for (struct Node *t = head; t != NULL; t = t->next) printf("%d -> ", t->data); printf("NULL\n"); }
+int main() {
+    insertEnd(10); insertEnd(20); insertEnd(30); insertFront(5);
+    printf("List: "); display();
+    deleteFront();
+    printf("After deleting front: "); display();
+    return 0;
+}`,'List: 5 -> 10 -> 20 -> 30 -> NULL\nAfter deleting front: 10 -> 20 -> 30 -> NULL'.replace(/\\n/g,'\n'));
+pp('P10: Singly Circular Linked List','Insert at end, delete from front and display in a circular list.','The last node points back to the first. A pointer to the last node gives easy access to both ends.',R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *next; };
+struct Node *last = NULL;
+void insertEnd(int x) {
+    struct Node *n = malloc(sizeof(struct Node)); n->data = x;
+    if (last == NULL) { n->next = n; last = n; return; }
+    n->next = last->next; last->next = n; last = n;
+}
+void deleteFront() {
+    if (last == NULL) { printf("List empty\n"); return; }
+    struct Node *head = last->next;
+    if (head == last) last = NULL; else last->next = head->next;
+    free(head);
+}
+void display() {
+    if (last == NULL) { printf("Empty\n"); return; }
+    struct Node *t = last->next;
+    do { printf("%d ", t->data); t = t->next; } while (t != last->next);
+    printf("\n");
+}
+int main() {
+    insertEnd(10); insertEnd(20); insertEnd(30);
+    printf("List: "); display();
+    deleteFront();
+    printf("After delete: "); display();
+    return 0;
+}`,'List: 10 20 30\nAfter delete: 20 30'.replace(/\\n/g,'\n'));
+pp('P11: BST and Traversals','Create a BST and print inorder, preorder and postorder.','Smaller keys go left, larger go right. Inorder gives sorted order.',R`#include <stdio.h>
+#include <stdlib.h>
+struct Node { int data; struct Node *left, *right; };
+struct Node* insert(struct Node *root, int x) {
+    if (root == NULL) {
+        struct Node *n = malloc(sizeof(struct Node));
+        n->data = x; n->left = n->right = NULL; return n;
+    }
+    if (x < root->data) root->left = insert(root->left, x);
+    else root->right = insert(root->right, x);
+    return root;
+}
+void inorder(struct Node *r)   { if (r) { inorder(r->left); printf("%d ", r->data); inorder(r->right); } }
+void preorder(struct Node *r)  { if (r) { printf("%d ", r->data); preorder(r->left); preorder(r->right); } }
+void postorder(struct Node *r) { if (r) { postorder(r->left); postorder(r->right); printf("%d ", r->data); } }
+int main() {
+    struct Node *root = NULL;
+    int keys[] = {50, 30, 70, 20, 40, 60, 80};
+    for (int i = 0; i < 7; i++) root = insert(root, keys[i]);
+    printf("Inorder  : "); inorder(root);
+    printf("\nPreorder : "); preorder(root);
+    printf("\nPostorder: "); postorder(root);
+    return 0;
+}`,'Inorder  : 20 30 40 50 60 70 80 \nPreorder : 50 30 20 40 70 60 80 \nPostorder: 20 40 30 60 80 70 50 '.replace(/\\n/g,'\n'));
+pp('P12: Graph DFS and BFS','Traverse a graph with DFS and BFS using an adjacency matrix.','BFS uses a queue (level by level). DFS uses recursion (goes deep first).',R`#include <stdio.h>
+#define V 6
+int adj[V][V], visited[V];
+void addEdge(int u, int v) { adj[u][v] = adj[v][u] = 1; }
+void dfs(int u) {
+    visited[u] = 1; printf("%d ", u);
+    for (int v = 0; v < V; v++)
+        if (adj[u][v] && !visited[v]) dfs(v);
+}
+void bfs(int s) {
+    int queue[V], front = 0, rear = -1;
+    visited[s] = 1; queue[++rear] = s;
+    while (front <= rear) {
+        int u = queue[front++];
+        printf("%d ", u);
+        for (int v = 0; v < V; v++)
+            if (adj[u][v] && !visited[v]) { visited[v] = 1; queue[++rear] = v; }
+    }
+}
+int main() {
+    addEdge(0,1); addEdge(0,2); addEdge(1,3); addEdge(2,3); addEdge(2,4); addEdge(3,5); addEdge(4,5);
+    printf("DFS: "); dfs(0);
+    for (int i = 0; i < V; i++) visited[i] = 0;
+    printf("\nBFS: "); bfs(0);
+    return 0;
+}`,'DFS: 0 1 3 2 4 5 \nBFS: 0 1 2 3 4 5 '.replace(/\\n/g,'\n'));
+pp('P13: Bubble Sort','Sort an array using bubble sort.','Compare neighbours and swap if out of order. The largest value moves to the end each pass.',R`#include <stdio.h>
+int main() {
+    int a[5] = {64, 25, 12, 22, 11}, n = 5;
+    for (int i = 0; i < n - 1; i++)
+        for (int j = 0; j < n - 1 - i; j++)
+            if (a[j] > a[j+1]) { int t = a[j]; a[j] = a[j+1]; a[j+1] = t; }
+    printf("Sorted: ");
+    for (int i = 0; i < n; i++) printf("%d ", a[i]);
+    return 0;
+}`,'Sorted: 11 12 22 25 64');
+pp('P14: Selection Sort','Sort an array using selection sort.','Find the smallest element in the unsorted part and swap it to the front.',R`#include <stdio.h>
+int main() {
+    int a[5] = {64, 25, 12, 22, 11}, n = 5;
+    for (int i = 0; i < n - 1; i++) {
+        int min = i;
+        for (int j = i + 1; j < n; j++)
+            if (a[j] < a[min]) min = j;
+        int t = a[i]; a[i] = a[min]; a[min] = t;
+    }
+    printf("Sorted: ");
+    for (int i = 0; i < n; i++) printf("%d ", a[i]);
+    return 0;
+}`,'Sorted: 11 12 22 25 64');
+pp('P15: Binary Search','Search a sorted array using binary search.','Compare with the middle element and discard half of the range each step.',R`#include <stdio.h>
+int main() {
+    int a[5] = {11, 12, 22, 25, 64}, key = 25, lo = 0, hi = 4, pos = -1;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (a[mid] == key) { pos = mid; break; }
+        else if (a[mid] < key) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    if (pos != -1) printf("%d found at index %d\n", key, pos);
+    else printf("%d not found\n", key);
+    return 0;
+}`,'25 found at index 3');
+const U=[['Unit 1: Basics & Arrays',['Introduction to Data Structures','Algorithms & Complexity','Arrays','2D Arrays & Matrix','Sparse Matrix']],['Unit 2: Stack & Queue',['Stack','Stack Applications & Recursion','Parenthesis Checking','Tower of Hanoi','Infix, Prefix & Postfix','Infix to Postfix','Postfix Evaluation','Queue','Circular Queue','Priority Queue','Deque']],['Unit 3: Linked Lists',['Linked List','Circular Linked List','Doubly Linked List','Doubly Circular Linked List','Stack using Linked List','Queue using Linked List']],['Unit 4: Trees',['Tree Basics & Binary Tree','Binary Search Tree']],['Unit 5: Graphs',['Graph','Graph Types & Adjacency List','BFS','DFS']],['Unit 6: Sorting, Searching, Hashing',['Sorting & Searching Overview','Bubble Sort','Selection Sort','Insertion Sort','Quick Sort','Merge Sort','Linear Search','Binary Search','Hashing','Hash Functions & Collisions']],['C Practicals',T.filter(t=>/^P\d+:/.test(t.n)).map(t=>t.n)]];
+// ---------- UI ----------
+let cur=0,S,F,tm;const $=id=>document.getElementById(id);
+const nav=$('nav');U.forEach(([u,ns])=>{const h=document.createElement('h3');h.textContent=u;nav.appendChild(h);ns.forEach(n=>{const i=T.findIndex(t=>t.n==n);const b=document.createElement('button');b.textContent=n;b.dataset.i=i;b.onclick=()=>go(i);nav.appendChild(b)})});
+function go(i){cur=i;clearInterval(tm);const t=T[i];[...nav.children].forEach(b=>b.classList.toggle('on',b.dataset.i==i));$('ti').textContent=t.n;$('de').textContent=t.d;$('cd').textContent=t.c;$('ms').textContent='';const ct=$('ct');ct.innerHTML='';
+if(t.s){$('vz').innerHTML=t.s}else if(t.fr){const inp=document.createElement('input');inp.className='wd';inp.value=t.inp;ct.appendChild(inp);const bt=(l,f)=>{const b=document.createElement('button');b.textContent=l;b.onclick=f;ct.appendChild(b)};
+const show=()=>{const x=F.fr[F.i];$('vz').innerHTML=x.h;$('ms').textContent=`Step ${F.i+1}/${F.fr.length}: ${x.m}`};
+const run=()=>{clearInterval(tm);F={fr:t.gen(inp.value),i:0};show()};
+bt('Run',run);bt('◀ Back',()=>{if(F&&F.i>0){F.i--;show()}});bt('Next ▶',()=>{if(F&&F.i<F.fr.length-1){F.i++;show()}});bt('Auto play',()=>{run();tm=setInterval(()=>{if(F.i<F.fr.length-1){F.i++;show()}else clearInterval(tm)},700)});run();}
+else{S=t.S();const v=document.createElement('input');v.type='number';v.placeholder='value';ct.appendChild(v);let p;if(t.p){p=document.createElement('input');p.type='number';p.placeholder='position';ct.appendChild(p)}
+const draw=()=>$('vz').innerHTML=t.dr(S);t.ops.forEach(([l,f])=>{const b=document.createElement('button');b.textContent=l;b.onclick=()=>{const val=v.value===''?NaN:+v.value;const needs=/push|enqueue|insert|search|delete value/i.test(l)&&!/front$/i.test(l)&&!/Delete @/.test(l)&&!/Insert front/.test(l);const msg=f(S,isNaN(val)?0:val,p&&p.value!==''?+p.value:0);$('ms').textContent=msg;draw();v.value=''};ct.appendChild(b)});draw()}}
+go(0);
+</script></body></html>
